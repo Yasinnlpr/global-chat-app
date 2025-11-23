@@ -3,3 +3,4 @@ Flask-SocketIO
 python-engineio
 python-socketio
 gunicorn
+eventlet  <-- این خط جدید و حیاتی است!
