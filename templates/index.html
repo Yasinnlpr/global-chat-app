@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <title>چت روم بلادرنگ (Real-Time Chat)</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js"></script>
+    <style>
+        /* شبیه سازی ظاهر گوگل چت */
+        body {
+            font-family: Tahoma, sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: #f0f2f5; /* رنگ پس‌زمینه لایت */
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+        }
+        .chat-container {
+            width: 100%;
+            max-width: 700px;
+            height: 90vh;
+            background-color: #fff;
+            border-radius: 8px;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12), 0 1px 2px rgba(0, 0, 0, 0.24);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+        .header {
+            background-color: #1a73e8; /* رنگ اصلی گوگل */
+            color: white;
+            padding: 15px;
+            text-align: center;
+            font-size: 1.2em;
+        }
+        #chat-box {
+            flex-grow: 1;
+            padding: 20px;
+            overflow-y: auto;
+            border-bottom: 1px solid #ddd;
+        }
+        .message {
+            margin-bottom: 10px;
+            padding: 8px 12px;
+            border-radius: 18px;
+            max-width: 70%;
+            word-wrap: break-word;
+            line-height: 1.4;
+        }
+        .message.self {
+            background-color: #e2f3ff; /* پیام‌های من */
+            margin-right: auto;
+            border-bottom-right-radius: 4px;
+        }
+        .message.other {
+            background-color: #f1f0f0; /* پیام‌های دیگران */
+            margin-left: auto;
+            border-bottom-left-radius: 4px;
+        }
+        .message .username {
+            font-weight: bold;
+            display: block;
+            margin-bottom: 3px;
+            font-size: 0.8em;
+            color: #1a73e8;
+        }
+        .status-message {
+            text-align: center;
+            font-style: italic;
+            color: #666;
+            margin: 10px 0;
+        }
+        #message-form {
+            display: flex;
+            padding: 15px;
+            border-top: 1px solid #eee;
+        }
+        #message-input {
+            flex-grow: 1;
+            padding: 10px;
+            border: 1px solid #ccc;
+            border-radius: 20px;
+            margin-left: 10px;
+            font-size: 1em;
+        }
+        #send-button {
+            background-color: #1a73e8;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 20px;
+            cursor: pointer;
+            font-size: 1em;
+            transition: background-color 0.2s;
+        }
+        #send-button:hover {
+            background-color: #1764c9;
+        }
+        #username-prompt {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 100;
+        }
+        .prompt-box {
+            background-color: white;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            text-align: center;
+        }
+        .prompt-box input {
+            padding: 10px;
+            margin: 10px 0;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+        }
+    </style>
+</head>
+<body>
+
+<div id="username-prompt">
+    <div class="prompt-box">
+        <h3>نام کاربری خود را وارد کنید</h3>
+        <input type="text" id="username-input" placeholder="مثلاً: سارا">
+        <button id="start-chat-button">ورود به چت</button>
+    </div>
+</div>
+
+<div class="chat-container" id="chat-app" style="display: none;">
+    <div class="header">
+        گفتگوی جهانی 🌎
+    </div>
+    <div id="chat-box">
+        </div>
+    <form id="message-form">
+        <input type="text" id="message-input" placeholder="یک پیام بنویسید..." autocomplete="off">
+        <button id="send-button" type="submit">ارسال</button>
+    </form>
+</div>
+
+<script>
+    let socket;
+    let username = '';
+    const chatBox = document.getElementById('chat-box');
+    const messageInput = document.getElementById('message-input');
+    const messageForm = document.getElementById('message-form');
+    const usernameInput = document.getElementById('username-input');
+    const startChatButton = document.getElementById('start-chat-button');
+    const usernamePrompt = document.getElementById('username-prompt');
+    const chatApp = document.getElementById('chat-app');
+
+    // --- توابع رابط کاربری ---
+    function displayMessage(data, type) {
+        const msgDiv = document.createElement('div');
+        
+        if (type === 'status') {
+            msgDiv.className = 'status-message';
+            msgDiv.textContent = data.msg;
+        } else {
+            msgDiv.className = 'message';
+            if (data.username === username) {
+                msgDiv.classList.add('self');
+            } else {
+                msgDiv.classList.add('other');
+                const userSpan = document.createElement('span');
+                userSpan.className = 'username';
+                userSpan.textContent = data.username;
+                msgDiv.appendChild(userSpan);
+            }
+            const content = document.createTextNode(data.msg);
+            msgDiv.appendChild(content);
+        }
+        
+        chatBox.appendChild(msgDiv);
+        // اسکرول به پایین چت
+        chatBox.scrollTop = chatBox.scrollHeight;
+    }
+
+    // --- منطق WebSocket ---
+    function connectToChat(user) {
+        username = user;
+        // آدرس سرور پایتون. اگر روی سرور عمومی دیپلو شده باشد، باید آدرس IP/دامنه آنجا را قرار دهید.
+        // در حالت لوکال، همین کافی است.
+        socket = io.connect('http://' + document.domain + ':' + location.port);
+
+        // ۱. رویداد اتصال
+        socket.on('connect', function() {
+            socket.emit('join', { username: username });
+            usernamePrompt.style.display = 'none';
+            chatApp.style.display = 'flex';
+            messageInput.focus();
+        });
+
+        // ۲. دریافت پیام‌های عمومی/خصوصی (پیام چت)
+        socket.on('message', function(data) {
+            displayMessage(data, 'chat');
+        });
+
+        // ۳. دریافت پیام‌های وضعیت (ورود/خروج)
+        socket.on('status', function(data) {
+            displayMessage(data, 'status');
+        });
+
+        // ۴. مدیریت ارسال فرم
+        messageForm.onsubmit = function(e) {
+            e.preventDefault();
+            const msg = messageInput.value.trim();
+            if (msg) {
+                socket.emit('text', { username: username, msg: msg });
+                messageInput.value = '';
+            }
+        };
+    }
+
+    // --- مدیریت ورود کاربر ---
+    startChatButton.onclick = function() {
+        const user = usernameInput.value.trim();
+        if (user) {
+            connectToChat(user);
+        } else {
+            alert('لطفاً نام کاربری خود را وارد کنید.');
+        }
+    };
+    
+    // اجازه ورود با زدن Enter در فیلد نام کاربری
+    usernameInput.addEventListener('keypress', function(e) {
+        if (e.key === 'Enter') {
+            startChatButton.click();
+        }
+    });
+
+</script>
+
+</body>
+</html>
