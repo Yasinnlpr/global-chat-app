@@ -6,7 +6,7 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js"></script>
     <style>
         /* -------------------------------------- */
-        /* استایل های واتساپ/تلگرام        */
+        /* استایل های واتساپ/تلگرام اصلاح شده */
         /* -------------------------------------- */
         
         /* پس زمینه: الگوی کاغذ دیواری */
@@ -19,13 +19,11 @@
             justify-content: center;
             align-items: center;
             min-height: 100vh;
-            /* اگر می‌خواهید تصویر پس زمینه بگذارید: */
-            /* background-image: url('pattern.png'); */
         }
         .chat-container {
             width: 100%;
             max-width: 800px;
-            height: 98vh; /* کمی بزرگتر برای موبایل */
+            height: 98vh;
             background-color: #f7f7f7;
             border-radius: 8px;
             box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12);
@@ -51,7 +49,8 @@
         .message {
             margin-bottom: 10px;
             padding: 8px 10px;
-            border-radius: 7px; /* گوشه های پیام */
+            /* اصلاح مهم: گوشه های گرد پیام */
+            border-radius: 7px; 
             max-width: 75%;
             word-wrap: break-word;
             line-height: 1.4;
@@ -60,17 +59,23 @@
         }
         .message.self {
             background-color: #dcf8c6; /* سبز روشن واتساپ */
-            margin-right: 50px;
-            margin-left: auto; /* برای راست چین کردن */
+            margin-left: auto; 
+            /* اصلاح برای گوشه تیز پیام‌های خودی */
+            border-top-left-radius: 7px;
+            border-bottom-right-radius: 0;
+            margin-right: 5px; /* کمی فاصله از لبه راست */
         }
         .message.other {
-            background-color: #ffffff; /* سفید تلگرام/واتساپ */
-            margin-left: 50px;
-            margin-right: auto; /* برای چپ چین کردن */
+            background-color: #ffffff; /* سفید/خاکستری روشن */
+            margin-right: auto; 
+            /* اصلاح برای گوشه تیز پیام‌های دیگران */
+            border-top-right-radius: 7px;
+            border-bottom-left-radius: 0;
+            margin-left: 5px; /* کمی فاصله از لبه چپ */
         }
         .message .username {
             font-weight: bold;
-            display: inline; /* تغییر به inline */
+            display: inline;
             margin-bottom: 0px;
             font-size: 0.9em;
             color: #34b7f1; /* رنگ آبی برای نام کاربری دیگران */
@@ -97,11 +102,12 @@
             box-shadow: 0 1px 0 rgba(0, 0, 0, 0.08);
         }
         #send-button {
-            background-color: #128c7e; /* سبز دکمه ارسال */
+            /* استفاده از آیکون ارسال به جای متن (برای ظاهر واتساپ) */
+            background-color: #128c7e; 
             color: white;
             border: none;
             padding: 10px 10px;
-            border-radius: 50%; /* گرد کردن دکمه */
+            border-radius: 50%; 
             width: 45px;
             height: 45px;
             display: flex;
@@ -110,6 +116,8 @@
             cursor: pointer;
             font-size: 1.2em;
             transition: background-color 0.2s;
+            /* تغییر متن به آیکون با استفاده از unicode */
+            content: "\27A2"; /* فلش راست */
         }
         #send-button:hover {
             background-color: #0c7268;
@@ -169,7 +177,9 @@
         </div>
     <form id="message-form">
         <input type="text" id="message-input" placeholder="یک پیام بنویسید..." autocomplete="off">
-        <button id="send-button" type="submit">ارسال</button>
+        <button id="send-button" type="submit">
+            &#x27A2; 
+        </button>
     </form>
 </div>
 
