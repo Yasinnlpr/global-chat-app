@@ -2,7 +2,7 @@ import os
 import base64
 import uuid
 from datetime import datetime
-from flask import Flask, render_template, request, session, redirect, url_for, jsonify, send_from_directory
+from flask import Flask, render_template, request, session, redirect, url_for, jsonify
 from flask_socketio import SocketIO, join_room, leave_room, emit
 from werkzeug.utils import secure_filename
 
@@ -12,60 +12,46 @@ from werkzeug.utils import secure_filename
 app = Flask(__name__, static_folder='static', template_folder='templates')
 app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'your_fallback_secret_key')
 
-# آپلود فایل‌ها (Render فضای دیسک موقتی دارد؛ برای دموی ساده کافیست)
 UPLOAD_DIR = os.path.join(app.root_path, 'static', 'uploads')
 os.makedirs(UPLOAD_DIR, exist_ok=True)
 ALLOWED_IMAGE_EXT = {'png', 'jpg', 'jpeg', 'gif', 'webp'}
 ALLOWED_AUDIO_EXT = {'wav', 'mp3', 'ogg', 'webm'}
 
-# Socket.IO با CORS آزاد برای کلاینت‌ها
 socketio = SocketIO(app, cors_allowed_origins="*")
 
 # ----------------------------
-# داده‌های درون‌حافظه (تا وقتی سرور ری‌استارت نشه باقی‌اند)
+# داده‌های درون‌حافظه
 # ----------------------------
-rooms = {}                 # {room_id: {'users': [{'username','sid'}], 'messages': [...]}}
-users_in_room = {}         # {room_id: [{'username','id'}]} — برای سازگاری با کد قبلی
-accounts = {}              # {username: {'password': '...', 'display_name': '...'}}
-ADMIN_USER = os.environ.get('nilipouryasin@gmail.com', 'devadmin')
-ADMIN_PASS = os.environ.get('yasin.7734', 'devpass')
-DEV_MODE_USERS = set()     # مجموعه‌ی کاربرانی که به حالت توسعه‌دهنده واردند
+rooms = {}
+users_in_room = {}
+
+# حساب‌های اولیه
+accounts = {
+    "yasin": {"password": "yasin.7734", "display_name": "یاسین"},
+    "leila": {"password": "1365", "display_name": "لیلا"},
+    "zeynab": {"password": "1362", "display_name": "زینب"},
+    "tasnim": {"password": "1388", "display_name": "تسنیم"},
+}
+
+# ادمین برای حالت توسعه‌دهنده
+ADMIN_USER = os.environ.get('ADMIN_USER', 'devadmin')
+ADMIN_PASS = os.environ.get('ADMIN_PASS', 'devpass')
+DEV_MODE_USERS = set()
 
 GLOBAL_ROOM = 'global_chat_room'
-
-# نمونه‌ی اولیه‌ی اتاق
 rooms.setdefault(GLOBAL_ROOM, {'users': [], 'messages': []})
 
 # ----------------------------
-# ابزارها
-# ----------------------------
-def is_image(filename):
-    return filename.split('.')[-1].lower() in ALLOWED_IMAGE_EXT
-
-def is_audio(filename):
-    return filename.split('.')[-1].lower() in ALLOWED_AUDIO_EXT
-
-def require_login(fn):
-    def wrapper(*args, **kwargs):
-        if 'username' not in session:
-            return redirect(url_for('login'))
-        return fn(*args, **kwargs)
-    wrapper.__name__ = fn.__name__
-    return wrapper
-
-# ----------------------------
-# مسیرها (HTTP)
+# مسیرها
 # ----------------------------
 @app.route('/', methods=['GET'])
 def index():
-    # اگر لاگین نشده باشد، به صفحه‌ی ورود برو
     if 'username' not in session:
         return redirect(url_for('login'))
     return render_template('index.html')
 
 @app.route('/login', methods=['GET', 'POST'])
 def login():
-    # صفحه‌ی ورود ساده: username + password
     if request.method == 'GET':
         return render_template('login.html')
     data = request.form
@@ -98,7 +84,6 @@ def logout():
 
 @app.route('/dev/create_user', methods=['POST'])
 def dev_create_user():
-    # فقط برای توسعه‌دهنده
     if 'username' not in session or session['username'] not in DEV_MODE_USERS:
         return jsonify({'ok': False, 'error': 'دسترسی غیرمجاز'}), 403
 
@@ -117,7 +102,6 @@ def dev_create_user():
 
 @app.route('/upload', methods=['POST'])
 def upload_file():
-    # آپلود عکس یا صوت
     if 'username' not in session:
         return jsonify({'ok': False, 'error': 'ابتدا وارد شوید'}), 403
 
@@ -133,41 +117,30 @@ def upload_file():
     if ext not in ALLOWED_IMAGE_EXT.union(ALLOWED_AUDIO_EXT):
         return jsonify({'ok': False, 'error': 'پسوند فایل پشتیبانی نمی‌شود'}), 400
 
-    # نام یکتا
     unique = f"{uuid.uuid4().hex}.{ext}"
     save_path = os.path.join(UPLOAD_DIR, unique)
     f.save(save_path)
 
     file_url = url_for('static', filename=f'uploads/{unique}', _external=True)
-    return jsonify({'ok': True, 'url': file_url, 'type': 'image' if is_image(unique) else 'audio'})
-
-# سرو فایل‌ها در static/ (Flask خودش انجام می‌دهد)
+    return jsonify({'ok': True, 'url': file_url, 'type': 'image' if ext in ALLOWED_IMAGE_EXT else 'audio'})
 
 # ----------------------------
-# رویدادهای Socket.IO (چت + وضعیت + WebRTC signaling)
+# رویدادهای Socket.IO
 # ----------------------------
 @socketio.on('join')
 def on_join(data):
     username = data.get('username')
     room = data.get('room', GLOBAL_ROOM)
-
     if not room or not username:
         return
-
     join_room(room)
-
-    # ثبت کاربر در ساختار قدیمی
     users_in_room.setdefault(room, [])
     if username not in [u['username'] for u in users_in_room[room]]:
         users_in_room[room].append({'username': username, 'id': request.sid})
-
-    # ثبت کاربر در ساختار جدید
     if room not in rooms:
         rooms[room] = {'users': [], 'messages': []}
     if username not in [u['username'] for u in rooms[room]['users']]:
         rooms[room]['users'].append({'username': username, 'sid': request.sid})
-
-    # خوش‌آمد
     emit('status', {'msg': f'{username} به چت پیوست.'}, room=room)
     emit('user_list', {'users': rooms[room]['users']}, room=room)
     emit('presence', {'username': username, 'state': 'online'}, room=room)
@@ -177,7 +150,6 @@ def on_leave(data=None):
     sid = request.sid
     room = None
     username = None
-
     for r, user_list in users_in_room.items():
         for user in user_list:
             if user['id'] == sid:
@@ -186,14 +158,10 @@ def on_leave(data=None):
                 break
         if room:
             break
-
     if room and username:
         users_in_room[room] = [user for user in users_in_room[room] if user['id'] != sid]
         leave_room(room)
-
-        # ساختار جدید
         rooms[room]['users'] = [u for u in rooms[room]['users'] if u['sid'] != sid]
-
         emit('status', {'msg': f'{username} از چت خارج شد.'}, room=room)
         emit('user_list', {'users': rooms[room]['users']}, room=room)
         emit('presence', {'username': username, 'state': 'offline'}, room=room)
@@ -203,11 +171,9 @@ def handle_message(data):
     username = data.get('username')
     room = data.get('room', GLOBAL_ROOM)
     msg = data.get('msg', '').strip()
-    reply_to = data.get('reply_to')  # اختیاری: متن یا شناسه‌ی پیام برای ریپلای
-
+    reply_to = data.get('reply_to')
     if not msg:
         return
-
     message_obj = {
         'username': username,
         'msg': msg,
@@ -220,11 +186,10 @@ def handle_message(data):
 
 @socketio.on('send_media')
 def handle_media(data):
-    # رسانه از طریق /upload آمده و این فقط اطلاع‌رسانی به بقیه است
     username = data.get('username')
     room = data.get('room', GLOBAL_ROOM)
     media_url = data.get('url')
-    media_type = data.get('type')  # image | audio
+    media_type = data.get('type')
     if not media_url or media_type not in ('image', 'audio'):
         return
     message_obj = {
@@ -239,15 +204,11 @@ def handle_media(data):
 
 @socketio.on('typing')
 def handle_typing(data):
-    # نمایش وضعیت درحال تایپ/آپلود/ضبط در هدر
     room = data.get('room', GLOBAL_ROOM)
     username = data.get('username')
-    state = data.get('state')  # typing | uploading | recording | idle
+    state = data.get('state')
     emit('activity', {'username': username, 'state': state}, room=room)
 
-# ----------------------------
-# WebRTC signaling events
-# ----------------------------
 @socketio.on('rtc_offer')
 def rtc_offer(data):
     room = data.get('room', GLOBAL_ROOM)
@@ -256,14 +217,4 @@ def rtc_offer(data):
 @socketio.on('rtc_answer')
 def rtc_answer(data):
     room = data.get('room', GLOBAL_ROOM)
-    emit('rtc_answer', data, room=room, include_self=False)
-
-@socketio.on('rtc_ice')
-def rtc_ice(data):
-    room = data.get('room', GLOBAL_ROOM)
-    emit('rtc_ice', data, room=room, include_self=False)
-
-# ----------------------------
-# اجرای با Gunicorn در Render (بلاک __main__ حذف شده)
-# ----------------------------
-# Render از Procfile/Start Command استفاده می‌کند.
+    emit('
