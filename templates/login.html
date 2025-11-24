@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+  <meta charset="UTF-8" />
+  <title>ورود به چت</title>
+  <style>
+    body {
+      font-family: Tahoma, sans-serif;
+      background: #ece5dd;
+      display: flex; justify-content: center; align-items: center;
+      min-height: 100vh; margin: 0;
+    }
+    .box {
+      background: #fff; border-radius: 8px; padding: 20px;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.15);
+      width: 320px;
+    }
+    .box h3 { margin-top: 0; }
+    .box input { width: 100%; padding: 10px; margin: 8px 0; }
+    .box button { width: 100%; padding: 10px; background: #128c7e; color: #fff; border: none; border-radius: 6px; cursor: pointer; }
+    .error { color: #c00; margin-top: 8px; }
+    .dev-tools { margin-top: 16px; border-top: 1px solid #ddd; padding-top: 12px; display: none; }
+    .dev-tools input { width: 100%; padding: 8px; margin: 6px 0; }
+    .dev-tools button { width: 100%; padding: 8px; background: #075e54; color: #fff; border: none; border-radius: 6px; cursor: pointer; }
+  </style>
+</head>
+<body>
+
+<div class="box">
+  <h3>ورود</h3>
+  <form method="POST" action="/login">
+    <input name="username" placeholder="نام کاربری" required />
+    <input name="password" type="password" placeholder="رمز عبور" required />
+    <button type="submit">ورود</button>
+    {% if error %}
+      <div class="error">{{ error }}</div>
+    {% endif %}
+  </form>
+
+  {% if session.get('username') == (env_admin_user if env_admin_user else '') %}
+  <div class="dev-tools">
+    <h4>ابزار توسعه‌دهنده</h4>
+    <input id="new_user" placeholder="نام کاربری جدید" />
+    <input id="new_pass" placeholder="رمز عبور جدید" />
+    <input id="new_name" placeholder="نام نمایشی" />
+    <button id="btn-create">ساخت حساب جدید</button>
+    <div id="dev-msg" class="error"></div>
+  </div>
+  {% endif %}
+</div>
+
+<script>
+  // اگر بعداً خواستی ابزار dev را در همین صفحه نشان دهی، می‌توانی بعد از ورود devadmin آن را فعال کنی.
+  // این نسخه ساده است؛ ابزار ساخت حساب بعد از ورود توسعه‌دهنده در خود اپ یا صفحه جدا هم قابل افزودن است.
+</script>
+
+</body>
+</html>

@@ -1,297 +1,570 @@
 <!DOCTYPE html>
 <html lang="fa" dir="rtl">
 <head>
-    <meta charset="UTF-8">
-    <title>چت روم بلادرنگ (WhatsApp Style)</title>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js"></script>
-    <style>
-        /* -------------------------------------- */
-        /* استایل های واتساپ/تلگرام اصلاح شده */
-        /* -------------------------------------- */
-        
-        /* پس زمینه: الگوی کاغذ دیواری */
-        body {
-            font-family: Tahoma, sans-serif;
-            margin: 0;
-            padding: 0;
-            background-color: #e5ddd5; /* رنگ پس زمینه واتساپ */
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            min-height: 100vh;
-        }
-        .chat-container {
-            width: 100%;
-            max-width: 800px;
-            height: 98vh;
-            background-color: #f7f7f7;
-            border-radius: 8px;
-            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12);
-            display: flex;
-            flex-direction: column;
-            overflow: hidden;
-        }
-        .header {
-            background-color: #075e54; /* رنگ سبز تیره واتساپ */
-            color: white;
-            padding: 15px;
-            text-align: right;
-            font-size: 1.1em;
-            font-weight: bold;
-        }
-        #chat-box {
-            flex-grow: 1;
-            padding: 5px 15px;
-            overflow-y: auto;
-            /* پس زمینه چت باکس */
-            background-color: #ece5dd; 
-        }
-        .message {
-            margin-bottom: 10px;
-            padding: 8px 10px;
-            /* اصلاح مهم: گوشه های گرد پیام */
-            border-radius: 7px; 
-            max-width: 75%;
-            word-wrap: break-word;
-            line-height: 1.4;
-            box-shadow: 0 1px 0.5px rgba(0, 0, 0, 0.13);
-            position: relative;
-        }
-        .message.self {
-            background-color: #dcf8c6; /* سبز روشن واتساپ */
-            margin-left: auto; 
-            /* اصلاح برای گوشه تیز پیام‌های خودی */
-            border-top-left-radius: 7px;
-            border-bottom-right-radius: 0;
-            margin-right: 5px; /* کمی فاصله از لبه راست */
-        }
-        .message.other {
-            background-color: #ffffff; /* سفید/خاکستری روشن */
-            margin-right: auto; 
-            /* اصلاح برای گوشه تیز پیام‌های دیگران */
-            border-top-right-radius: 7px;
-            border-bottom-left-radius: 0;
-            margin-left: 5px; /* کمی فاصله از لبه چپ */
-        }
-        .message .username {
-            font-weight: bold;
-            display: inline;
-            margin-bottom: 0px;
-            font-size: 0.9em;
-            color: #34b7f1; /* رنگ آبی برای نام کاربری دیگران */
-            margin-left: 5px;
-        }
-        .status-message {
-            text-align: center;
-            font-style: italic;
-            color: #666;
-            margin: 10px 0;
-        }
-        #message-form {
-            display: flex;
-            padding: 8px 15px;
-            background-color: #f0f0f0; /* نوار ورودی خاکستری روشن */
-        }
-        #message-input {
-            flex-grow: 1;
-            padding: 10px 15px;
-            border: none;
-            border-radius: 20px; /* گرد کردن کادر */
-            margin-left: 10px;
-            font-size: 1em;
-            box-shadow: 0 1px 0 rgba(0, 0, 0, 0.08);
-        }
-        #send-button {
-            /* استفاده از آیکون ارسال به جای متن (برای ظاهر واتساپ) */
-            background-color: #128c7e; 
-            color: white;
-            border: none;
-            padding: 10px 10px;
-            border-radius: 50%; 
-            width: 45px;
-            height: 45px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            cursor: pointer;
-            font-size: 1.2em;
-            transition: background-color 0.2s;
-            /* تغییر متن به آیکون با استفاده از unicode */
-            content: "\27A2"; /* فلش راست */
-        }
-        #send-button:hover {
-            background-color: #0c7268;
-        }
-        /* استایل های فرم ورود کاربر */
-        #username-prompt {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background-color: rgba(0, 0, 0, 0.7);
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            z-index: 100;
-        }
-        .prompt-box {
-            background-color: white;
-            padding: 30px;
-            border-radius: 8px;
-            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
-            text-align: center;
-        }
-        .prompt-box input {
-            padding: 10px;
-            margin: 10px 0;
-            border: 1px solid #ccc;
-            border-radius: 4px;
-        }
-        #start-chat-button {
-            background-color: #128c7e;
-            color: white;
-            border: none;
-            padding: 10px 20px;
-            border-radius: 4px;
-            cursor: pointer;
-        }
+  <meta charset="UTF-8" />
+  <title>مسنجر جهانی (سبک تلگرام) + تماس صوتی/تصویری</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.7.2/socket.io.min.js"></script>
+  <style>
+    /* ریشه رنگ‌ها */
+    :root {
+      --bg-chat: #ece5dd;
+      --bubble-self: #dcf8c6;
+      --bubble-other: #ffffff;
+      --header: #075e54;
+      --accent: #128c7e;
+      --text-muted: #666;
+      --blue: #34b7f1;
+    }
+    body {
+      font-family: Tahoma, sans-serif;
+      margin: 0; padding: 0;
+      background-color: var(--bg-chat);
+      display: flex; justify-content: center; align-items: center;
+      min-height: 100vh;
+    }
+    .app {
+      width: 100%;
+      max-width: 950px;
+      height: 98vh;
+      background: #f7f7f7;
+      border-radius: 8px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.12);
+      display: grid;
+      grid-template-rows: auto 1fr auto auto;
+      overflow: hidden;
+    }
+    .header {
+      background-color: var(--header);
+      color: #fff;
+      padding: 12px 16px;
+      display: flex; align-items: center; justify-content: space-between;
+    }
+    .title {
+      font-weight: bold;
+    }
+    .presence {
+      font-size: 0.9em;
+      color: #cce;
+    }
+    .activity {
+      font-size: 0.85em;
+      color: #eef;
+      margin-right: 10px;
+    }
+    .chat {
+      background-color: var(--bg-chat);
+      overflow-y: auto;
+      padding: 8px 14px;
+    }
+    .message {
+      margin: 8px 0;
+      padding: 8px 10px;
+      border-radius: 7px;
+      max-width: 75%;
+      word-wrap: break-word;
+      line-height: 1.4;
+      box-shadow: 0 1px 0.5px rgba(0,0,0,0.13);
+      position: relative;
+    }
+    .message.self {
+      background-color: var(--bubble-self);
+      margin-left: auto;
+      border-top-left-radius: 7px;
+      border-bottom-right-radius: 0;
+      margin-right: 5px;
+    }
+    .message.other {
+      background-color: var(--bubble-other);
+      margin-right: auto;
+      border-top-right-radius: 7px;
+      border-bottom-left-radius: 0;
+      margin-left: 5px;
+    }
+    .username {
+      font-weight: bold;
+      font-size: 0.9em;
+      color: var(--blue);
+      margin-left: 5px;
+    }
+    .status {
+      text-align: center;
+      font-style: italic;
+      color: var(--text-muted);
+      margin: 10px 0;
+    }
+    .reply {
+      font-size: 0.85em;
+      color: #444;
+      background: rgba(0,0,0,0.05);
+      border-radius: 6px;
+      padding: 4px 6px;
+      margin-bottom: 6px;
+    }
+    .time {
+      font-size: 0.75em;
+      color: #999;
+      position: absolute;
+      bottom: 4px; left: 8px;
+    }
+    .toolbar {
+      background: #f0f0f0;
+      display: flex; gap: 8px;
+      align-items: center;
+      padding: 8px 10px;
+    }
+    .toolbar button {
+      background: var(--accent); color: #fff; border: none;
+      padding: 8px 12px; border-radius: 6px; cursor: pointer;
+    }
+    .inputbar {
+      display: flex; gap: 8px;
+      padding: 8px 10px; background: #f0f0f0;
+    }
+    .inputbar input[type="text"] {
+      flex: 1; padding: 10px 12px; border: none; border-radius: 20px;
+      font-size: 1em; box-shadow: 0 1px 0 rgba(0,0,0,0.08);
+    }
+    .inputbar button {
+      background: var(--accent); color: #fff; border: none;
+      padding: 10px 14px; border-radius: 50%; width: 45px; height: 45px;
+      display: flex; align-items: center; justify-content: center; cursor: pointer;
+      font-size: 1.1em;
+    }
 
-    </style>
+    /* پنل استیکر */
+    .stickers {
+      display: none;
+      background: #fff; border-top: 1px solid #ddd;
+      padding: 6px; overflow-x: auto; white-space: nowrap;
+    }
+    .stickers img {
+      height: 64px; width: 64px; object-fit: contain; margin: 4px; cursor: pointer;
+    }
+
+    /* تماس صوتی/تصویری */
+    .callbar {
+      background: #fff; border-top: 1px solid #ddd;
+      display: grid; grid-template-columns: 1fr 1fr;
+      gap: 8px; padding: 8px 10px;
+    }
+    video {
+      width: 100%; max-height: 35vh; background: #000; border-radius: 6px;
+    }
+
+    /* واکنش‌گرا */
+    @media (max-width: 600px) {
+      .app { max-width: 100%; height: 100vh; }
+      video { max-height: 28vh; }
+      .inputbar button { width: 42px; height: 42px; }
+    }
+  </style>
 </head>
 <body>
 
-<div id="username-prompt">
-    <div class="prompt-box">
-        <h3>نام کاربری خود را وارد کنید</h3>
-        <input type="text" id="username-input" placeholder="مثلاً: سارا">
-        <button id="start-chat-button">ورود به چت</button>
-    </div>
-</div>
+<div class="app" id="app">
+  <div class="header">
+    <div class="title">گفتگوی جهانی 🌍</div>
+    <div>
+      <span class="activity" id="activity">—</span>
+      <span class="presence" id="presence">آنلاین‌ها: 0</span>
+    </div>
+  </div>
 
-<div class="chat-container" id="chat-app" style="display: none;">
-    <div class="header">
-        گفتگوی جهانی 🌍
-    </div>
-    <div id="chat-box">
-        </div>
-    <form id="message-form">
-        <input type="text" id="message-input" placeholder="یک پیام بنویسید..." autocomplete="off">
-        <button id="send-button" type="submit">
-            &#x27A2; 
-        </button>
-    </form>
+  <div class="chat" id="chat"></div>
+
+  <div class="toolbar">
+    <button id="btn-stickers">استیکر</button>
+    <input type="file" id="file-input" accept="image/*,audio/*" />
+    <button id="btn-record">ضبط ویس</button>
+    <button id="btn-stop-record" disabled>توقف ضبط</button>
+  </div>
+
+  <div class="stickers" id="stickers">
+    <!-- استیکرهای نمونه (می‌تونی فایل‌های PNG/GIF خودت رو بذاری) -->
+    <img src="https://media.tenor.com/6xj3E3hZVUsAAAAi/party-parrot.gif" alt="sticker" />
+    <img src="https://media.tenor.com/2roX3uxz_68AAAAC/cat-cute.gif" alt="sticker" />
+    <img src="https://media.tenor.com/1qX4tWJvS9MAAAAC/pepe-happy.gif" alt="sticker" />
+  </div>
+
+  <form class="inputbar" id="msg-form">
+    <input type="text" id="msg-input" placeholder="یک پیام بنویسید..." autocomplete="off" />
+    <button type="submit" title="ارسال">&#x27A2;</button>
+  </form>
+
+  <div class="callbar">
+    <div>
+      <video id="localVideo" autoplay playsinline muted></video>
+    </div>
+    <div>
+      <video id="remoteVideo" autoplay playsinline></video>
+    </div>
+    <div style="grid-column: span 2; display: flex; gap: 8px;">
+      <button id="btn-voice-call">تماس صوتی</button>
+      <button id="btn-video-call">تماس تصویری</button>
+      <button id="btn-end-call">پایان تماس</button>
+    </div>
+  </div>
 </div>
 
 <script>
-    let socket;
-    let username = '';
-    const room_id = 'global_chat_room'; 
-    const chatBox = document.getElementById('chat-box');
-    const messageInput = document.getElementById('message-input');
-    const messageForm = document.getElementById('message-form');
-    const usernameInput = document.getElementById('username-input');
-    const startChatButton = document.getElementById('start-chat-button');
-    const usernamePrompt = document.getElementById('username-prompt');
-    const chatApp = document.getElementById('chat-app');
+  // ---------------------------
+  // اطلاعات کاربر (از سشن سرور)
+  // ---------------------------
+  // چون این صفحه بعد از لاگین نشان داده می‌شود، نام کاربری را از کوکی/سشن نیاز نداریم.
+  // برای سادگی از prompt می‌گیریم اگر لازم شد؛ اما اینجا فرض می‌کنیم نام کاربری را از سرور با متغیر جای‌گذاری شود.
+  // اگر خواستی، می‌شنه به صورت server-side تزریق کنی.
 
-    // --- توابع رابط کاربری ---
-    function displayMessage(data, type) {
-        const msgDiv = document.createElement('div');
-        
-        if (type === 'status') {
-            msgDiv.className = 'status-message';
-            msgDiv.textContent = data.msg;
-        } else {
-            msgDiv.className = 'message';
-            if (data.username === username) {
-                msgDiv.classList.add('self');
-            } else {
-                msgDiv.classList.add('other');
-                
-                // ۱. نام کاربری (Bold)
-                const userSpan = document.createElement('span');
-                userSpan.className = 'username';
-                userSpan.textContent = data.username;
-                msgDiv.appendChild(userSpan);
-                
-                // اضافه کردن جداکننده " گفت: "
-                const separator = document.createTextNode(' گفت: ');
-                msgDiv.appendChild(separator);
-            }
-            // ۲. متن پیام
-            const content = document.createTextNode(data.msg);
-            msgDiv.appendChild(content);
-        }
-        
-        chatBox.appendChild(msgDiv);
-        // اسکرول به پایین چت
-        chatBox.scrollTop = chatBox.scrollHeight;
-    }
+  // برای دمو: اگر سرور سشن دارد و نام کاربری را در قالب نیاورد، از یک prompt ساده استفاده کن:
+  let username = '{{ session.get("username", "") }}';
+  if (!username || username.includes('{')) {
+    username = prompt('نام کاربری سشن ناشناس است. لطفاً نام خود را وارد کنید:', 'کاربر');
+  }
+  const room_id = 'global_chat_room';
 
-    // --- منطق WebSocket ---
-    function connectToChat(user) {
-        username = user;
-        
-        // اتصال بدون آدرس دهی مستقیم برای رفع خطای Mixed Content
-        socket = io();
+  const chatEl = document.getElementById('chat');
+  const presenceEl = document.getElementById('presence');
+  const activityEl = document.getElementById('activity');
+  const msgForm = document.getElementById('msg-form');
+  const msgInput = document.getElementById('msg-input');
+  const fileInput = document.getElementById('file-input');
+  const btnStickers = document.getElementById('btn-stickers');
+  const stickersEl = document.getElementById('stickers');
+  const btnRecord = document.getElementById('btn-record');
+  const btnStopRecord = document.getElementById('btn-stop-record');
 
-        // ۱. رویداد اتصال
-        socket.on('connect', function() {
-            // ارسال رویداد join به سرور
-            socket.emit('join', { username: username, room: room_id });
-            usernamePrompt.style.display = 'none';
-            chatApp.style.display = 'flex';
-            messageInput.focus();
-        });
+  // WebRTC عناصر
+  const localVideo = document.getElementById('localVideo');
+  const remoteVideo = document.getElementById('remoteVideo');
+  const btnVoice = document.getElementById('btn-voice-call');
+  const btnVideo = document.getElementById('btn-video-call');
+  const btnEnd = document.getElementById('btn-end-call');
 
-        // ۲. دریافت پیام‌های وضعیت (ورود/خروج)
-        socket.on('status', function(data) {
-            displayMessage(data, 'status');
-        });
-        
-        // ۳. دریافت پیام‌های جدید (رویداد new_message از app.py)
-        socket.on('new_message', function(data) {
-            displayMessage(data, 'chat');
-        });
+  // Socket.IO
+  const socket = io();
 
-        // ۴. مدیریت ارسال فرم
-        messageForm.onsubmit = function(e) {
-            e.preventDefault();
-            const msg = messageInput.value.trim();
-            if (msg) {
-                // ارسال پیام به سرور با رویداد send_message
-                socket.emit('send_message', { username: username, msg: msg, room: room_id });
-                messageInput.value = '';
-            }
-        };
-        
-        // ۵. رویداد قطع اتصال
-        window.addEventListener('beforeunload', function() {
-            if(socket) {
-                socket.emit('left');
-            }
+  // ---------------------------
+  // پیوستن به اتاق
+  // ---------------------------
+  socket.on('connect', () => {
+    socket.emit('join', { username, room: room_id });
+  });
+
+  socket.on('status', (data) => {
+    const s = document.createElement('div');
+    s.className = 'status';
+    s.textContent = data.msg;
+    chatEl.appendChild(s);
+    chatEl.scrollTop = chatEl.scrollHeight;
+  });
+
+  socket.on('user_list', (data) => {
+    presenceEl.textContent = 'آنلاین‌ها: ' + (data.users ? data.users.length : 0);
+  });
+
+  socket.on('presence', (data) => {
+    // می‌تونی وضعیت هر کاربر را در سایدبار نشان بدهی؛ اینجا فقط شمارش داریم
+  });
+
+  socket.on('activity', (data) => {
+    // state: typing | uploading | recording | idle
+    const map = {
+      typing: `${data.username} در حال تایپ...`,
+      uploading: `${data.username} در حال ارسال فایل...`,
+      recording: `${data.username} در حال ضبط ویس...`,
+      idle: '—'
+    };
+    activityEl.textContent = map[data.state] || '—';
+  });
+
+  socket.on('new_message', (data) => {
+    addMessage(data);
+  });
+
+  // ---------------------------
+  // نمایش پیام
+  // ---------------------------
+  function addMessage(data) {
+    const div = document.createElement('div');
+    div.className = 'message ' + (data.username === username ? 'self' : 'other');
+
+    if (data.username !== username && data.type === 'text') {
+      const u = document.createElement('span');
+      u.className = 'username';
+      u.textContent = data.username;
+      div.appendChild(u);
+      div.appendChild(document.createTextNode(' گفت: '));
+    }
+
+    if (data.reply_to) {
+      const r = document.createElement('div');
+      r.className = 'reply';
+      r.textContent = 'پاسخ به: ' + data.reply_to;
+      div.appendChild(r);
+    }
+
+    if (data.type === 'text') {
+      div.appendChild(document.createTextNode(data.msg));
+    } else if (data.type === 'image') {
+      const img = document.createElement('img');
+      img.src = data.msg;
+      img.style.maxWidth = '100%';
+      img.style.borderRadius = '6px';
+      div.appendChild(img);
+    } else if (data.type === 'audio') {
+      const audio = document.createElement('audio');
+      audio.controls = true;
+      audio.src = data.msg;
+      div.appendChild(audio);
+    }
+
+    const t = document.createElement('span');
+    t.className = 'time';
+    try {
+      const d = new Date(data.time);
+      t.textContent = d.toLocaleTimeString();
+    } catch {
+      t.textContent = '';
+    }
+    div.appendChild(t);
+
+    // قابلیت ریپلای با کلیک راست یا دو بار کلیک
+    div.addEventListener('dblclick', () => {
+      msgInput.value = '';
+      msgInput.placeholder = 'پاسخ به: ' + (data.type === 'text' ? data.msg : `[${data.type}]`);
+      msgInput.dataset.replyTo = (data.type === 'text' ? data.msg : `[${data.type}]`);
+      msgInput.focus();
+    });
+
+    chatEl.appendChild(div);
+    chatEl.scrollTop = chatEl.scrollHeight;
+  }
+
+  // ---------------------------
+  // تایپ کردن
+  // ---------------------------
+  let typingTimer;
+  msgInput.addEventListener('input', () => {
+    socket.emit('typing', { username, room: room_id, state: 'typing' });
+    clearTimeout(typingTimer);
+    typingTimer = setTimeout(() => {
+      socket.emit('typing', { username, room: room_id, state: 'idle' });
+    }, 1200);
+  });
+
+  // ---------------------------
+  // ارسال متن
+  // ---------------------------
+  msgForm.addEventListener('submit', (e) => {
+    e.preventDefault();
+    const msg = msgInput.value.trim();
+    if (!msg) return;
+    const reply_to = msgInput.dataset.replyTo || null;
+    socket.emit('send_message', { username, room: room_id, msg, reply_to });
+    msgInput.value = '';
+    msgInput.placeholder = 'یک پیام بنویسید...';
+    delete msgInput.dataset.replyTo;
+    socket.emit('typing', { username, room: room_id, state: 'idle' });
+  });
+
+  // ---------------------------
+  // استیکر
+  // ---------------------------
+  btnStickers.addEventListener('click', () => {
+    stickersEl.style.display = (stickersEl.style.display === 'none' ? 'block' : 'none');
+  });
+  stickersEl.addEventListener('click', (e) => {
+    if (e.target.tagName.toLowerCase() === 'img') {
+      // استیکر به عنوان تصویر پیام
+      socket.emit('send_media', { username, room: room_id, url: e.target.src, type: 'image' });
+    }
+  });
+
+  // ---------------------------
+  // آپلود فایل (عکس/صوت)
+  // ---------------------------
+  fileInput.addEventListener('change', async (e) => {
+    const f = e.target.files[0];
+    if (!f) return;
+    socket.emit('typing', { username, room: room_id, state: 'uploading' });
+
+    const form = new FormData();
+    form.append('file', f);
+    try {
+      const res = await fetch('/upload', { method: 'POST', body: form });
+      const j = await res.json();
+      if (j.ok) {
+        socket.emit('send_media', { username, room: room_id, url: j.url, type: j.type });
+      } else {
+        alert(j.error || 'خطا در آپلود');
+      }
+    } catch (err) {
+      alert('مشکل در ارتباط با سرور آپلود');
+    } finally {
+      socket.emit('typing', { username, room: room_id, state: 'idle' });
+      e.target.value = '';
+    }
+  });
+
+  // ---------------------------
+  // ضبط ویس با MediaRecorder
+  // ---------------------------
+  let mediaRecorder;
+  let chunks = [];
+
+  btnRecord.addEventListener('click', async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      mediaRecorder = new MediaRecorder(stream);
+      chunks = [];
+      mediaRecorder.ondataavailable = e => {
+        if (e.data.size > 0) chunks.push(e.data);
+      };
+      mediaRecorder.onstop = async () => {
+        const blob = new Blob(chunks, { type: 'audio/webm' });
+        const file = new File([blob], `voice_${Date.now()}.webm`, { type: 'audio/webm' });
+        socket.emit('typing', { username, room: room_id, state: 'uploading' });
+        const form = new FormData();
+        form.append('file', file);
+        const res = await fetch('/upload', { method: 'POST', body: form });
+        const j = await res.json();
+        if (j.ok) {
+          socket.emit('send_media', { username, room: room_id, url: j.url, type: j.type });
+        } else {
+          alert(j.error || 'خطا در ارسال ویس');
+        }
+        socket.emit('typing', { username, room: room_id, state: 'idle' });
+      };
+      mediaRecorder.start();
+      btnRecord.disabled = true;
+      btnStopRecord.disabled = false;
+      socket.emit('typing', { username, room: room_id, state: 'recording' });
+    } catch (err) {
+      alert('دسترسی به میکروفون رد شد یا خطا رخ داد.');
+    }
+  });
+
+  btnStopRecord.addEventListener('click', () => {
+    if (mediaRecorder && mediaRecorder.state !== 'inactive') {
+      mediaRecorder.stop();
+      btnRecord.disabled = false;
+      btnStopRecord.disabled = true;
+      socket.emit('typing', { username, room: room_id, state: 'idle' });
+    }
+  });
+
+  // ---------------------------
+  // WebRTC تماس صوتی/تصویری
+  // ---------------------------
+  let pc;
+  let localStream;
+
+  async function startCall(video = false) {
+    try {
+      localStream = await navigator.mediaDevices.getUserMedia({ audio: true, video });
+      localVideo.srcObject = localStream;
+
+      const config = {
+        iceServers: [
+          { urls: 'stun:stun.l.google.com:19302' } // STUN عمومی
+        ]
+      };
+      pc = new RTCPeerConnection(config);
+      localStream.getTracks().forEach(track => pc.addTrack(track, localStream));
+
+      pc.ontrack = (e) => {
+        remoteVideo.srcObject = e.streams[0];
+      };
+
+      pc.onicecandidate = (e) => {
+        if (e.candidate) {
+          socket.emit('rtc_ice', { candidate: e.candidate, room: room_id, from: username });
+        }
+      };
+
+      const offer = await pc.createOffer();
+      await pc.setLocalDescription(offer);
+      socket.emit('rtc_offer', { offer, room: room_id, from: username });
+    } catch (err) {
+      alert('شروع تماس ممکن نشد: ' + err.message);
+    }
+  }
+
+  socket.on('rtc_offer', async (data) => {
+    try {
+      const config = { iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] };
+      pc = new RTCPeerConnection(config);
+
+      pc.ontrack = (e) => {
+        remoteVideo.srcObject = e.streams[0];
+      };
+      pc.onicecandidate = (e) => {
+        if (e.candidate) {
+          socket.emit('rtc_ice', { candidate: e.candidate, room: room_id, from: username });
+        }
+      };
+
+      // دریافت مدیا بر اساس پیشنهاد طرف مقابل (اگر ویدیو داشت)
+      const needVideo = data.offer.sdp.includes('m=video');
+      localStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: needVideo });
+      localVideo.srcObject = localStream;
+      localStream.getTracks().forEach(track => pc.addTrack(track, localStream));
+
+      await pc.setRemoteDescription(new RTCSessionDescription(data.offer));
+      const answer = await pc.createAnswer();
+      await pc.setLocalDescription(answer);
+      socket.emit('rtc_answer', { answer, room: room_id, from: username });
+    } catch (err) {
+      alert('پاسخ به تماس ممکن نشد: ' + err.message);
+    }
+  });
+
+  socket.on('rtc_answer', async (data) => {
+    try {
+      await pc.setRemoteDescription(new RTCSessionDescription(data.answer));
+    } catch (err) {
+      console.warn('خطا در setRemoteDescription:', err);
+    }
+  });
+
+  socket.on('rtc_ice', async (data) => {
+    try {
+      if (data.candidate) {
+        await pc.addIceCandidate(new RTCIceCandidate(data.candidate));
+      }
+    } catch (err) {
+      console.warn('خطا در addIceCandidate:', err);
+    }
+  });
+
+  function endCall() {
+    try {
+      if (pc) {
+        pc.getSenders().forEach(s => {
+          try { s.track.stop(); } catch {}
         });
+        pc.close();
+      }
+      pc = null;
+      if (localStream) {
+        localStream.getTracks().forEach(t => t.stop());
+        localStream = null;
+      }
+      localVideo.srcObject = null;
+      remoteVideo.srcObject = null;
+    } catch {}
+  }
 
-    }
+  btnVoice.addEventListener('click', () => startCall(false));
+  btnVideo.addEventListener('click', () => startCall(true));
+  btnEnd.addEventListener('click', () => endCall());
 
-    // --- مدیریت ورود کاربر ---
-    startChatButton.onclick = function() {
-        const user = usernameInput.value.trim();
-        if (user) {
-            connectToChat(user);
-        } else {
-            alert('لطفاً نام کاربری خود را وارد کنید.');
-        }
-    };
-    
-    // اجازه ورود با زدن Enter در فیلد نام کاربری
-    usernameInput.addEventListener('keypress', function(e) {
-        if (e.key === 'Enter') {
-            startChatButton.click();
-        }
-    });
-
+  // ---------------------------
+  // ترک صفحه
+  // ---------------------------
+  window.addEventListener('beforeunload', () => {
+    socket.emit('left');
+    endCall();
+  });
 </script>
 
 </body>
