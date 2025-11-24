@@ -1,5 +1,4 @@
 import os
-import base64
 import uuid
 from datetime import datetime
 from flask import Flask, render_template, request, session, redirect, url_for, jsonify
@@ -211,10 +210,4 @@ def handle_typing(data):
 
 @socketio.on('rtc_offer')
 def rtc_offer(data):
-    room = data.get('room', GLOBAL_ROOM)
-    emit('rtc_offer', data, room=room, include_self=False)
-
-@socketio.on('rtc_answer')
-def rtc_answer(data):
-    room = data.get('room', GLOBAL_ROOM)
-    emit('
+    room
