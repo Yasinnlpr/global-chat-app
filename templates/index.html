@@ -172,11 +172,18 @@
                 msgDiv.classList.add('self');
             } else {
                 msgDiv.classList.add('other');
+                
+                // ۱. نام کاربری (Bold)
                 const userSpan = document.createElement('span');
                 userSpan.className = 'username';
                 userSpan.textContent = data.username;
                 msgDiv.appendChild(userSpan);
+                
+                // 🔑 اضافه کردن جداکننده " گفت: "
+                const separator = document.createTextNode(' گفت: ');
+                msgDiv.appendChild(separator);
             }
+            // ۲. متن پیام
             const content = document.createTextNode(data.msg);
             msgDiv.appendChild(content);
         }
@@ -190,8 +197,7 @@
     function connectToChat(user) {
         username = user;
         
-        // 🔑 تغییر کلیدی: اتصال بدون آدرس دهی مستقیم برای رفع خطای Mixed Content
-        // این دستور اتصال امن (wss://) را در Render تضمین می‌کند.
+        // اتصال بدون آدرس دهی مستقیم برای رفع خطای Mixed Content
         socket = io();
 
         // ۱. رویداد اتصال
